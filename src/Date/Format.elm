@@ -1,4 +1,4 @@
-module Date.Format exposing (format, formatISO8601, localFormat)
+module Date.Format exposing (format, localFormat, formatISO8601)
 
 {-| Format strings for dates.
 
@@ -19,11 +19,16 @@ re =
     Regex.regex "%(_|-|0)?(%|Y|y|m|B|b|d|e|a|A|H|k|I|l|L|p|P|M|S)"
 
 
+type NumberOfDigits
+    = Two
+    | Three
+    | Four
+
+
 type Padding
     = NoPadding
-    | Space
-    | Zero
-    | ZeroThreeDigits
+    | Space NumberOfDigits
+    | Zero NumberOfDigits
 
 
 {-| Use a format string to format a date. See the
@@ -62,10 +67,15 @@ formatToken loc d m =
                     ( Just NoPadding, x )
 
                 [ Just "_", Just x ] ->
-                    ( Just Space, x )
+                    case x of
+                        "Y" ->
+                            ( Just <| Space Four, x )
+
+                        _ ->
+                            ( Just <| Space Two, x )
 
                 [ Just "0", Just x ] ->
-                    ( Just Zero, x )
+                    ( Just <| Zero Two, x )
 
                 [ Nothing, Just x ] ->
                     ( Nothing, x )
@@ -78,13 +88,13 @@ formatToken loc d m =
             "%"
 
         "Y" ->
-            d |> Date.year |> toString
+            d |> Date.year |> toString |> padWith (withDefault (Zero Four) padding)
 
         "y" ->
-            d |> Date.year |> toString |> right 2
+            d |> Date.year |> toString |> right 2 |> padWith (withDefault (Zero Two) padding)
 
         "m" ->
-            d |> Date.month |> monthToInt |> padWith (withDefault Zero padding)
+            d |> Date.month |> monthToInt |> toString |> padWith (withDefault (Zero Two) padding)
 
         "B" ->
             d |> Date.month |> monthToWord loc.date.months
@@ -93,10 +103,10 @@ formatToken loc d m =
             d |> Date.month |> monthToWord loc.date.monthsAbbrev
 
         "d" ->
-            d |> Date.day |> padWith (withDefault Zero padding)
+            d |> Date.day |> toString |> padWith (withDefault (Zero Two) padding)
 
         "e" ->
-            d |> Date.day |> padWith (withDefault Space padding)
+            d |> Date.day |> toString |> padWith (withDefault (Space Two) padding)
 
         "a" ->
             d |> Date.dayOfWeek |> dayOfWeekToWord loc.date.wdaysAbbrev
@@ -105,37 +115,39 @@ formatToken loc d m =
             d |> Date.dayOfWeek |> dayOfWeekToWord loc.date.wdays
 
         "H" ->
-            d |> Date.hour |> padWith (withDefault Zero padding)
+            d |> Date.hour |> toString |> padWith (withDefault (Zero Two) padding)
 
         "k" ->
-            d |> Date.hour |> padWith (withDefault Space padding)
+            d |> Date.hour |> toString |> padWith (withDefault (Space Two) padding)
 
         "I" ->
-            d |> Date.hour |> mod12 |> zero2twelve |> padWith (withDefault Zero padding)
+            d |> Date.hour |> mod12 |> zero2twelve |> toString |> padWith (withDefault (Zero Two) padding)
 
         "l" ->
-            d |> Date.hour |> mod12 |> zero2twelve |> padWith (withDefault Space padding)
+            d |> Date.hour |> mod12 |> zero2twelve |> toString |> padWith (withDefault (Space Two) padding)
 
         "p" ->
             if Date.hour d < 12 then
                 toUpper loc.time.am
+
             else
                 toUpper loc.time.pm
 
         "P" ->
             if Date.hour d < 12 then
                 loc.time.am
+
             else
                 loc.time.pm
 
         "M" ->
-            d |> Date.minute |> padWith (withDefault Zero padding)
+            d |> Date.minute |> toString |> padWith (withDefault (Zero Two) padding)
 
         "S" ->
-            d |> Date.second |> padWith (withDefault Zero padding)
+            d |> Date.second |> toString |> padWith (withDefault (Zero Two) padding)
 
         "L" ->
-            d |> Date.millisecond |> padWith (withDefault ZeroThreeDigits padding)
+            d |> Date.millisecond |> toString |> padWith (withDefault (Zero Three) padding)
 
         _ ->
             ""
@@ -250,11 +262,12 @@ mod12 h =
 zero2twelve n =
     if n == 0 then
         12
+
     else
         n
 
 
-padWith : Padding -> a -> String
+padWith : Padding -> String -> String
 padWith padding =
     let
         padder =
@@ -262,13 +275,26 @@ padWith padding =
                 NoPadding ->
                     identity
 
-                Zero ->
-                    padLeft 2 '0'
+                Zero digits ->
+                    case digits of
+                        Two ->
+                            padLeft 2 '0'
 
-                ZeroThreeDigits ->
-                    padLeft 3 '0'
+                        Three ->
+                            padLeft 3 '0'
 
-                Space ->
-                    padLeft 2 ' '
+                        Four ->
+                            padLeft 4 '0'
+
+                Space digits ->
+                    case digits of
+                        Two ->
+                            padLeft 2 ' '
+
+                        Three ->
+                            padLeft 3 ' '
+
+                        Four ->
+                            padLeft 4 ' '
     in
-    padder << toString
+    padder

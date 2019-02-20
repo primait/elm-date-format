@@ -13,6 +13,7 @@ import Time
 import Time.Format
 
 
+
 -- test name, expected value, format string
 
 
@@ -23,6 +24,8 @@ all =
             List.map (makeTest << formatDateTest) dateTestData
         , describe "Time Format tests" <|
             List.map (makeTest << formatTimeTest) timeTestData
+        , describe "Date Format Year Padding" <|
+            List.map (makeTest << formatDateYearPaddingTest) dateYearPaddingData
         ]
 
 
@@ -48,6 +51,15 @@ timeTestData =
     , ( "time colons", expectedTimeColons, "%H:%M" )
     , ( "time full colons", expectedFullTimeColons, "%H:%M:%S" )
     , ( "time with milliseconds", expectedTimeWithMilliSeconds, "%H:%M:%S:%L" )
+    ]
+
+
+dateYearPaddingData : List TestTriple
+dateYearPaddingData =
+    [ ( "year 4 digits padded with zeros", "0002-05-17", "%Y-%m-%d" )
+    , ( "year 2 digits padded with zeros", "02-05-17", "%y-%m-%d" )
+    , ( "year 4 digits padded with spaces", "   2-05-17", "%_Y-%m-%d" )
+    , ( "year 2 digits padded with spaces", " 2-05-17", "%_y-%m-%d" )
     ]
 
 
@@ -92,6 +104,11 @@ sampleTime =
     Date.toTime sampleDate
 
 
+samplePaddingYearDate : Date.Date
+samplePaddingYearDate =
+    Result.withDefault sampleDate <| Date.fromString "0002-05-17"
+
+
 pad : Int -> Int -> String
 pad n =
     toString >> padLeft n '0'
@@ -131,6 +148,11 @@ formatSampleTime fstring =
     Time.Format.format fstring sampleTime
 
 
+formatSamplePaddingYearDate : String -> String
+formatSamplePaddingYearDate fstring =
+    Date.Format.format fstring samplePaddingYearDate
+
+
 formatDateTest : TestTriple -> TestTriple
 formatDateTest ( a, b, format ) =
     ( a, b, formatSampleDate format )
@@ -139,6 +161,11 @@ formatDateTest ( a, b, format ) =
 formatTimeTest : TestTriple -> TestTriple
 formatTimeTest ( a, b, format ) =
     ( a, b, formatSampleTime format )
+
+
+formatDateYearPaddingTest : TestTriple -> TestTriple
+formatDateYearPaddingTest ( a, b, format ) =
+    ( a, b, formatSamplePaddingYearDate format )
 
 
 makeTest : TestTriple -> Test
